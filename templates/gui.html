@@ -1,0 +1,161 @@
+<!doctype html>
+<html>
+    <head>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js" integrity="sha512-kp7YHLxuJDJcOzStgd6vtpxr4ZU9kjn77e6dBsivSz+pUuAuMlE2UTdKB7jjsWT84qbS8kdCWHPETnP/ctrFsA==" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/react/16.13.1/umd/react.production.min.js" integrity="sha512-SUJujhtUWZUlwsABaZNnTFRlvCu7XGBZBL1VF33qRvvgNk3pBS9E353kcag4JAv05/nsB9sanSXFbdHAUW9+lg==" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/16.13.1/umd/react-dom.production.min.js" integrity="sha512-SYsXmAblZhruCNUVmTp5/v2a1Fnoia06iJh3+L9B9wUaqpRVjcNBQsqAglQG9b5+IaVCfLDH5+vW923JL5epZA==" crossorigin="anonymous"></script>
+        <title>Among Us Solver</title>
+        <style>
+            li.colour_box{
+                display:inline-block;
+                max-width: 4em;
+                max-height: 4em;
+                width: 15vw;
+                height: 15vw;
+                text-align: center;
+                border:2px solid black;
+                border-radius: 0.5em;
+            }
+            img.tc{
+                display:block;
+                max-width: 3em;
+                max-height: 3em;
+                width:10vw;
+                height:10vw;
+                margin:auto;
+            }
+            li.num_box{
+                display:inline-block;
+                width: 1.2em;
+                height: 1.2em;
+                border:2px solid black;
+                border-radius: 4px;
+                font-size:30pt;
+                text-align:center;
+            }
+            li.disabled_num{
+                border-color:grey;
+                color:grey;
+            }
+            li.selected_num{
+                color:red;
+                border-color:red;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Among Us Solver</h1>
+        <div id='content'></div>
+        <script type='text/babel'>
+            class ColourBox extends React.Component {
+                constructor(props){
+                    super(props);
+                    this.props = props;
+                }
+
+                is_ticked(){
+                    return this.props.checked;
+                }
+
+                imagename(){
+                    if (this.is_ticked()) { return 'static/tick.svg'; }
+                    return 'static/cross.svg';
+                }
+
+                render(){
+                    return(
+                        <li class='colour_box' style={ {backgroundColor: this.props.colourval} } onClick={this.props.onClick} >
+                            { this.props.colourname }
+                            <img class='tc' src={this.imagename()}/>
+                        </li>
+                    );
+                }
+            }
+
+            class NumberBox extends React.Component {
+                constructor(props){
+                    super(props);
+                    this.props = props;
+                }
+
+                render(){
+                    return(
+                        <li class={'num_box'+(this.props.enabled? ' disabled_num':' ')+(this.props.selected? ' selected_num':' ')} onClick={this.props.onClick} >
+                            { this.props.num }
+                        </li>
+                    );
+                }
+
+            }
+
+            class ChooseColours extends React.Component {
+                constructor(props){
+                    super(props);
+                    this.props = props;
+                    this.state = {checked: [true, true, true, true, true, false, false, false, false, false, false, false]};
+                    this.toggle = this.toggle.bind(this);
+                }
+
+                player_count(){
+                    return this.state.checked.map(c=>(c?1:0)).reduce((a,b)=>a+b,0);
+                }
+
+                toggle(i){
+                    this.setState((state, props) => {
+                        let c = state.checked;
+                        c[i] = !c[i];
+                        return {checked: c}
+                    });
+                }
+
+                render(){
+                    return(
+                        <div>
+                            <ul>
+                                {% for c, h in colours.items() %}
+                                    <ColourBox colourname='{{ c }}' colourval='#{{ h }}' index='{{ loop.index }}' onClick={()=>{this.toggle({{loop.index0}})}} checked={this.state.checked[{{loop.index0}}]}/>
+                                {% endfor %}
+                            </ul>
+                            <ul>
+                                {% for i in range(10) %}
+                                    <NumberBox num='{{i+1}}' enabled='false' selected={this.player_count() == {{i+1}} } />
+                                {% endfor %}
+                            </ul>
+                            <span style={ {color:'red', fontWeight: 'bold'} }>{this.player_count()>10?'Too many players':''}</span>
+                        </div>
+                    );
+                }
+            }
+
+            class ChooseNumber extends React.Component {
+                constructor(props){
+                    super(props);
+                    this.props = props;
+                    this.state = {n:1};
+                }
+
+                setnum(n){ this.setState({n}); }
+
+                render(){
+                    return(
+                        <ul>
+                            {Array.from(Array(this.props.max).keys()).map(i =>
+                                <NumberBox num={i+1} onClick={()=>{this.setnum(i+1);}} selected={this.state.n == i+1}/>
+                            )}
+                        </ul>
+                    );
+                }
+            }
+
+            ReactDOM.render(
+                <div>
+                    <h2>Players in game</h2>
+                    <ChooseColours />
+                    <h2>Number of impostors</h2>
+                    <ChooseNumber max={3} />
+                </div>
+                ,document.getElementById('content')
+            );
+        </script>
+    </body>
+</html>
