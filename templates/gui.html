@@ -8,14 +8,12 @@
         <style>
             li.colour_box{
                 display:inline-block;
-                max-width: 4em;
-                max-height: 4em;
                 width: 15vw;
-                height: 15vw;
                 text-align: center;
                 border:2px solid black;
                 border-radius: 0.5em;
             }
+
             img.tc{
                 display:block;
                 max-width: 3em;
@@ -24,6 +22,7 @@
                 height:10vw;
                 margin:auto;
             }
+
             li.num_box{
                 display:inline-block;
                 width: 1.2em;
@@ -33,13 +32,31 @@
                 font-size:30pt;
                 text-align:center;
             }
+
             li.disabled_num{
                 border-color:grey;
                 color:grey;
             }
+
             li.selected_num{
                 color:red;
                 border-color:red;
+            }
+
+            div.noticebox{
+                border-radius: 5px;
+                padding: 1em;
+                border: 1px solid #3891ff;
+                background-color: #d7f2ff;
+            }
+
+            div.noticebox:empty{
+                display:none;
+            }
+
+            div.error{
+                border-color: #ff7d7d;
+                background-color: #ffcece;
             }
         </style>
     </head>
@@ -147,15 +164,186 @@
                 }
             }
 
-            ReactDOM.render(
-                <div>
-                    <h2>Players in game</h2>
-                    <ChooseColours />
-                    <h2>Number of impostors</h2>
-                    <ChooseNumber max={3} />
-                </div>
-                ,document.getElementById('content')
-            );
+            class NoticeBox extends React.Component {
+                constructor(props){
+                    super(props);
+                    this.props = props;
+                }
+
+                render(){
+                    return(
+                        <div class={'noticebox' + (this.props.error?' error':'')}>
+                            { this.props.msg }
+                        </div>
+                    );
+                }
+            }
+
+            let colnames = [
+                {% for c in colours.keys() %}
+                    "{{c}}",
+                {% endfor %}
+            ];
+
+            let colmap = {
+                {% for c, h in colours.items() %}
+                    {{c}}: '#{{h}}',
+                {% endfor %}
+            }
+
+            function do_post(path, j){
+                return fetch(path, {
+                    method: 'POST'
+                    ,headers: {'Content-Type': 'application/json'}
+                    ,body: JSON.stringify(j)
+                })
+                .then(r=>r.json())
+            }
+
+            class GameStarter extends React.Component {
+                constructor(props){
+                    super(props);
+                    this.props = props;
+                    this.col_picker = React.createRef();
+                    this.num_picker = React.createRef();
+                    this.state = {msg:'', iserror:false}
+                    this.startgame = this.startgame.bind(this);
+                    this.handle_response = this.handle_response.bind(this);
+                }
+
+                handle_response(r){
+                    this.setState({msg: r.msg, iserror:r.result == 'error'});
+                    if (r.result == 'success'){
+                        if ('token' in r){
+                            run_game(r.token, r.colours);
+                        }
+                    }
+                }
+
+                startgame(){
+                    let colours = [];
+                    let flags = this.col_picker.current.state.checked;
+                    for (var i = 0; i<= flags.length-1; i++){
+                        if (flags[i]){
+                            colours.push(colnames[i]);
+                        }
+                    }
+                    let start_state = {
+                        impostors: this.num_picker.current.state.n
+                        ,colours: colours
+                    }
+                    do_post('/startgame', start_state).then(this.handle_response);
+                }
+
+                render(){
+                    return(
+                        <div>
+                            <NoticeBox ref={this.notice_box} msg={this.state.msg} error={this.state.iserror} />
+                            <h2>Players in game</h2>
+                            <ChooseColours ref={this.col_picker}/>
+                            <h2>Number of impostors</h2>
+                            <ChooseNumber ref={this.num_picker} max={3} />
+                            <button onClick={this.startgame}>Start game</button>
+                        </div>
+                    );
+                }
+            }
+
+
+            /*
+
+            The various ways you can learn information about the hidden game state:
+
+            def learn_certain_not_impostor(self, colour):
+                """ learn that the player with the specified colour is certainly not an impostor """
+
+            def learn_certain_impostor(self, colour):
+                """ learn that the player with the specified colour is certainly an impostor """
+
+            def learn_murder(self, colour):
+                """ Learn that the specified colour has been murdered """
+
+            def learn_ejected(self, colour):
+                """ Learn that the specified colour has been ejected"""
+
+            def learn_set_includes_impostors(self, colours):
+                """ learn that the players with the specified colours form a group that contains at least one
+
+            */
+
+
+            class LearnBox extends React.Component {
+                constructor(props){
+                    super(props);
+                    this.props = props;
+                    this.state = {selected: false}
+                }
+
+                render(){
+                    return(
+                        <li class='colour_box' style={ {backgroundColor: this.props.colourval} } onClick={this.props.onClick} >
+                            { this.props.colourname }
+                            <div><button>Murdered</button></div>
+                            <div><button>Ejected</button></div>
+                            <div><button>Crewmate</button></div>
+                            <div><button>Impostor</button></div>
+                            <p>{ this.props.model_count }</p>
+                        </li>
+                    );
+                }
+            }
+
+            class GameUI extends React.Component {
+                constructor(props){
+                    super(props);
+                    this.props = props;
+                    let model_counts = {}
+                    props.colours.forEach(c=>{
+                        model_counts[c] = -1;
+                    });
+                    this.state = {msg:'', iserror:false, model_counts};
+                    this.handle_response = this.handle_response.bind(this);
+                }
+
+                handle_response(r){
+                    this.setState({msg: r.msg, iserror:r.result == 'error'});
+                    if (r.result == 'success'){
+                        // TODO
+                    }
+                }
+
+                render(){
+                    return(
+                        <div>
+                            <NoticeBox ref={this.notice_box} msg={this.state.msg} error={this.state.iserror} />
+                            <h2>Game in progress</h2>
+                            <ul>
+                                {this.props.colours.map(c =>
+                                    <LearnBox colourname={c} colourval={colmap[c]} model_count={this.state.model_counts[c]} />
+                                )}
+                            </ul>
+                        </div>
+                    );
+                }
+            }
+
+            function run_game(token, colours){
+                console.log('Run game with token: ' + token);
+                ReactDOM.render(
+                    <GameUI token={token} colours={colours} />
+                    ,document.getElementById('content')
+                );
+
+            }
+
+            function configure_game(){
+                ReactDOM.render(
+                    <GameStarter />
+                    ,document.getElementById('content')
+                );
+            }
+
+            configure_game();
         </script>
     </body>
 </html>
