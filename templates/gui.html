@@ -43,27 +43,64 @@
                 border-color:red;
             }
 
+            @keyframes go_away {
+                0% {opacity:100%;}
+                75% {opacity:100%;}
+                100% {opacity:0%;}
+            }
+
             div.noticebox{
                 border-radius: 5px;
                 padding: 1em;
                 border: 1px solid #3891ff;
                 background-color: #d7f2ff;
+                opacity:100%;
+            }
+
+            .fadeout{
+                animation-name: go_away;
+                animation-duration: 4s;
+                animation-fill-mode: forwards;
             }
 
             div.noticebox:empty{
-                display:none;
+                opacity:0%;
+                content:'foo';
             }
 
             div.error{
                 border-color: #ff7d7d;
                 background-color: #ffcece;
             }
+
         </style>
     </head>
     <body>
         <h1>Among Us Solver</h1>
         <div id='content'></div>
         <script type='text/babel'>
+
+            let colnames = [
+                {% for c in colours.keys() %}
+                    "{{c}}",
+                {% endfor %}
+            ];
+
+            let colmap = {
+                {% for c, h in colours.items() %}
+                    {{c}}: '#{{h}}',
+                {% endfor %}
+            }
+
+            function do_post(path, j){
+                return fetch(path, {
+                    method: 'POST'
+                    ,headers: {'Content-Type': 'application/json'}
+                    ,body: JSON.stringify(j)
+                })
+                .then(r=>r.json())
+            }
+
             class ColourBox extends React.Component {
                 constructor(props){
                     super(props);
@@ -164,6 +201,13 @@
                 }
             }
 
+            function fade_notices(){
+                document.querySelectorAll('.noticebox').forEach(b=>{
+                    b.classList.remove('fadeout');
+                    setTimeout(()=>{b.classList.add('fadeout');}, 1);
+                })
+            }
+
             class NoticeBox extends React.Component {
                 constructor(props){
                     super(props);
@@ -179,27 +223,6 @@
                 }
             }
 
-            let colnames = [
-                {% for c in colours.keys() %}
-                    "{{c}}",
-                {% endfor %}
-            ];
-
-            let colmap = {
-                {% for c, h in colours.items() %}
-                    {{c}}: '#{{h}}',
-                {% endfor %}
-            }
-
-            function do_post(path, j){
-                return fetch(path, {
-                    method: 'POST'
-                    ,headers: {'Content-Type': 'application/json'}
-                    ,body: JSON.stringify(j)
-                })
-                .then(r=>r.json())
-            }
-
             class GameStarter extends React.Component {
                 constructor(props){
                     super(props);
@@ -213,9 +236,10 @@
 
                 handle_response(r){
                     this.setState({msg: r.msg, iserror:r.result == 'error'});
+                    fade_notices();
                     if (r.result == 'success'){
                         if ('token' in r){
-                            run_game(r.token, r.colours);
+                            run_game(r.token, r.impostors, r.colours, r.summary);
                         }
                     }
                 }
@@ -252,20 +276,6 @@
 
             /*
 
-            The various ways you can learn information about the hidden game state:
-
-            def learn_certain_not_impostor(self, colour):
-                """ learn that the player with the specified colour is certainly not an impostor """
-
-            def learn_certain_impostor(self, colour):
-                """ learn that the player with the specified colour is certainly an impostor """
-
-            def learn_murder(self, colour):
-                """ Learn that the specified colour has been murdered """
-
-            def learn_ejected(self, colour):
-                """ Learn that the specified colour has been ejected"""
-
             def learn_set_includes_impostors(self, colours):
                 """ learn that the players with the specified colours form a group that contains at least one
 
@@ -276,18 +286,34 @@
                 constructor(props){
                     super(props);
                     this.props = props;
-                    this.state = {selected: false}
+                    this.state = {checked: false};
+                    this.learn = this.learn.bind(this);
+                }
+
+                learn(what, who){
+                    let data = {token: this.props.token, what, who:[who]}
+                    do_post('/learn', data).then(this.props.handler);
+                }
+
+                is_ticked(){
+                    return this.props.checked;
+                }
+
+                imagename(){
+                    if (this.is_ticked()) { return 'static/tick.svg'; }
+                    return 'static/cross.svg';
                 }
 
                 render(){
                     return(
-                        <li class='colour_box' style={ {backgroundColor: this.props.colourval} } onClick={this.props.onClick} >
+                        <li class='colour_box' style={ {backgroundColor: this.props.colourval} } >
                             { this.props.colourname }
-                            <div><button>Murdered</button></div>
-                            <div><button>Ejected</button></div>
-                            <div><button>Crewmate</button></div>
-                            <div><button>Impostor</button></div>
-                            <p>{ this.props.model_count }</p>
+                            <div><button onClick={()=>{this.learn('murdered', this.props.colourname)}}>Murdered</button></div>
+                            <div><button onClick={()=>{this.learn('ejected', this.props.colourname)}}>Ejected</button></div>
+                            <div><button onClick={()=>{this.learn('crewmate', this.props.colourname)}}>Crewmate</button></div>
+                            <div><button onClick={()=>{this.learn('impostor', this.props.colourname)}}>Impostor</button></div>
+                            <p>Models: { this.props.model_count }</p>
+                            <img class='tc' src={this.imagename()} onClick={this.props.onClick} />
                         </li>
                     );
                 }
@@ -298,42 +324,115 @@
                     super(props);
                     this.props = props;
                     let model_counts = {}
+                    let i = 0;
+                    let checked = {}
                     props.colours.forEach(c=>{
-                        model_counts[c] = -1;
+                        model_counts[c] = props.summary1[i];
+                        checked[c] = false;
+                        i += 1;
                     });
-                    this.state = {msg:'', iserror:false, model_counts};
+                    this.state = {msg:'', iserror:false, model_counts, checked};
                     this.handle_response = this.handle_response.bind(this);
+                    this.toggle = this.toggle.bind(this);
+                    this.selection_has_impostor = this.selection_has_impostor.bind(this);
+                    this.resetgame = this.resetgame.bind(this);
+                }
+
+                toggle(colour){
+                    this.setState((state, props) => {
+                        let c = state.checked;
+                        c[colour] = !c[colour];
+                        return {checked: c}
+                    });
+                }
+
+                eject_text(){
+                    let countmap = Object.keys(this.state.model_counts).map(c=>[c, this.state.model_counts[c]]);
+                    countmap.sort((a,b)=> b[1]-a[1]);
+                    let n_sus = 0;
+                    countmap.forEach((col, n)=>{n_sus += ((n>0)?1:0);});
+                    if (n_sus == this.props.impostors){
+                        return (
+                            <div>
+                                <p>All impostors are known. Eject the following players:</p>
+                                <ul>
+                                    {countmap.map(([c,n])=>n>0?<li>{c}</li>:'')}
+                                </ul>
+                            </div>
+                        )
+                    }
+                    else{
+                        return (
+                            <div>
+                                <p>Uncertain which players are impostors. Skip, or do a risky eject with the following preference order:</p>
+                                <ul>
+                                    {countmap.map(([c,n])=>n>0?<li>{c}</li>:'')}
+                                </ul>
+                                <p>Do not vote for any of these players:</p>
+                                <ul>
+                                    {countmap.map(([c,n])=>n==0?<li>{c}</li>:'')}
+                                </ul>
+                            </div>
+                        )
+                    }
                 }
 
                 handle_response(r){
                     this.setState({msg: r.msg, iserror:r.result == 'error'});
+                    fade_notices();
                     if (r.result == 'success'){
-                        // TODO
+                        if (r.token != this.props.token){
+                            ReactDOM.render(<div></div>, document.getElementById('content'));
+                            run_game(r.token, r.impostors, r.colours, r.summary);
+                        }
+                        let s = r.summary;
+                        let i = 0;
+                        let model_counts = {};
+                        this.props.colours.forEach(c=>{
+                            model_counts[c] = s[i];
+                            i += 1;
+                        });
+                        this.setState({
+                            model_counts
+                        });
                     }
+                }
+
+                selection_has_impostor(){
+                    let selection = [];
+                    Object.keys(this.state.checked).forEach(colour=>{
+                        if (this.state.checked[colour]) {selection.push(colour);}
+                    });
+                    this.setState({checked: this.props.colours.map(c=>false)});
+                    do_post('/learn', {token: this.props.token, what:'impostor_in_group', who:selection}).then(this.handle_response);
+                }
+
+                resetgame(){
+                    let start_state = {
+                        impostors: this.props.impostors
+                        ,colours: this.props.colours
+                    }
+                    do_post('/startgame', start_state).then(this.handle_response);
                 }
 
                 render(){
                     return(
                         <div>
-                            <NoticeBox ref={this.notice_box} msg={this.state.msg} error={this.state.iserror} />
                             <h2>Game in progress</h2>
                             <ul>
                                 {this.props.colours.map(c =>
-                                    <LearnBox colourname={c} colourval={colmap[c]} model_count={this.state.model_counts[c]} />
+                                    <LearnBox onClick={()=>{this.toggle(c)}} handler={this.handle_response} token={this.props.token} colourname={c} colourval={colmap[c]} model_count={this.state.model_counts[c]} checked={this.state.checked[c]} />
                                 )}
                             </ul>
+                            <button style={ {marginBottom:'1em'} } onClick={this.selection_has_impostor}>Selection contains at least one impostor</button>
+                            <NoticeBox ref={this.notice_box} msg={this.state.msg} error={this.state.iserror} />
+                            <h2>Who to eject?</h2>
+                            {this.eject_text()}
+                            <button onClick={this.resetgame}>Replay with same config</button>
+                            <button onClick={configure_game}>New game</button>
                         </div>
                     );
                 }
-            }
-
-            function run_game(token, colours){
-                console.log('Run game with token: ' + token);
-                ReactDOM.render(
-                    <GameUI token={token} colours={colours} />
-                    ,document.getElementById('content')
-                );
-
             }
 
             function configure_game(){
@@ -341,6 +440,15 @@
                     <GameStarter />
                     ,document.getElementById('content')
                 );
+            }
+
+            function run_game(token, impostors, colours, summary){
+                console.log('Run game with token: ' + token);
+                ReactDOM.render(
+                    <GameUI token={token} colours={colours} impostors={impostors} summary1={summary} />
+                    ,document.getElementById('content')
+                );
+
             }
 
             configure_game();

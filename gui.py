@@ -26,12 +26,33 @@ colours = {
 
 running_games = {}
 
+def foreach(f):
+    def wrap(args):
+        for arg in args:
+            f(arg)
+    return wrap
+
 class Game:
     def __init__(self, colours, impostors):
         self.colours = colours
         self.impostors = impostors
         self.solver = GameSolver(len(colours), impostors)
         self.solver.set_colours(colours)
+        
+        self.whats = {
+            'murdered': foreach(self.solver.learn_murder)
+            ,'ejected': foreach(self.solver.learn_ejected)
+            ,'crewmate': foreach(self.solver.learn_certain_not_impostor)
+            ,'impostor': foreach(self.solver.learn_certain_impostor)
+            ,'impostor_in_group': self.solver.learn_set_includes_impostors
+        }
+
+    def summary(self):
+        summary, n_models = self.solver.check()
+        return summary[0:len(self.colours)]
+
+    def learn(self, what, who):
+        self.whats[what](who)
 
 def newgame(colours, impostors):
     token = None
@@ -65,10 +86,11 @@ def start():
     if n_players > 10:
         return error('Too many players, please choose no more than ten players.')
     if n_impostors * 2 >= n_players:
-        return error('Too many impostors, game must have more crewmates than imostors.')
+        return error('Too many impostors, game must have more crewmates than impostors.')
 
     token = newgame(colours, n_impostors)
-    return success({'token': token, 'colours': colours, 'msg': 'New game created.'})
+    model_summary = running_games[token].summary()
+    return success({'token': token, 'impostors': n_impostors, 'colours': colours, 'msg': 'New game created.', 'summary':model_summary})
 
 @app.route('/learn', methods=['POST'])
 def learn():
@@ -76,8 +98,17 @@ def learn():
     token = d.get('token', '')
     if token not in running_games:
         return error('The game has ended already. Please start a new game to continue.')
-    info = d.get('info')
-    if info is None:
-        return error('No information specified.')
+    what = d.get('what')
+    who = d.get('who', [])
     game = running_games[token]
-    print(game, info)
+    if what not in game.whats:
+        return error('"what" value invalid. No such what "%s".' % what)
+    if not who:
+        return error('No impostors were specified, please specify at least one impostor')
+    for c in who:
+        if c not in game.colours:
+            return error('Invalid player specified "%s".' % who)
+    game.learn(what, who)
+    model_summary = running_games[token].summary()
+    return success({'token': token, 'impostors': game.impostors, 'colours': game.colours, 'msg': 'Information learned.', 'summary':model_summary})
+    print(game)
