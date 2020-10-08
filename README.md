@@ -34,6 +34,7 @@ During the game, provide information as follows:
  - Person is ejected: click "Ejected" on the ejected colour, then if confirm-ejects is on, also click "Crewmate" or "Impostor" accordingly on the same colour
  - Person is seen to be a crewmate: click "Crewmate" on the seen colour
  - Person is seen to be an impostor: click "Impostor" on the seen colour
+ - A group of people is found to contain at least one impostor: click the [red] cross symbols on all colours in that group, to change them to [green] tick symbols, then click "Selection contains at least one impostor"
 
 When voting starts, look at the list of people to vote for under "Who to eject?". The topmost entry in the list is the most likely to be an impostor.
 
