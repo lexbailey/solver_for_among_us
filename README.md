@@ -50,17 +50,26 @@ The rules of the game are encoded in a form that z3 understands. The logic to fi
 ## FAQ
 
 Q: Is this an AI?
+
 A: No. It hasn't learned the game from the rules, it just has knows how to check if a game state is valid given the rules, and it finds all valid states (models).
 
+
 Q: Why did you make this?
+
 A: For fun.
 
+
 Q: Does this help you cheat at Among Us?
+
 A: No. I tried using it to play Among Us. It doesn't help. It's hopelessly impractical.
 
+
 Q: Why does the ui look so bad?
+
 A: Yes.
 
+
 Q: I found a problem, how do I report it?
+
 A: Raise an issue using the issues tab above.
 
