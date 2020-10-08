@@ -11,7 +11,7 @@ You can tell it when:
 
 That last point in the list is the important one.
 
-![Screenshot of solver GUI](https://github.com/danieljabailey/solver_for_among_us/raw/master/screenshots/screenshot1.png)
+![Screenshot of solver GUI](https://github.com/danieljabailey/solver_for_among_us/raw/master/screenshots/screenshot2.png)
 
 ## Platforms
 
