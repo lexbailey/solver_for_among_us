@@ -18,7 +18,7 @@ Only depends on python3 and some python3 modules, so can easily be ported to any
 
 ## Installation
 
-    ./init_venv
+    ./initvenv
 
 ## Running
 
