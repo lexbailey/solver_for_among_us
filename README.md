@@ -11,6 +11,9 @@ You can tell it when:
 
 That last point in the list is the important one.
 
+![Screenshot of solver GUI]
+()
+
 ## Platforms
 
 Tested on Ubuntu, probably works on must linux distros.
