@@ -11,6 +11,14 @@ You can tell it when:
 
 That last point in the list is the important one.
 
+## Video
+
+There's a video explanation of this on youtube here:
+
+https://youtu.be/G-ojENewj6o
+
+## Screenshot
+
 ![Screenshot of solver GUI](https://github.com/danieljabailey/solver_for_among_us/raw/master/screenshots/screenshot2.png)
 
 ## Platforms
