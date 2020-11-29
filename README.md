@@ -23,20 +23,39 @@ https://youtu.be/G-ojENewj6o
 
 ## Platforms
 
-Tested on Ubuntu, probably works on must linux distros.
+Tested on Ubuntu and Windows 10, probably works on most linux distros.
 Only depends on python3 and some python3 modules, so can easily be ported to any system that can run these.
 
 ## Installation
 
+For **linux** users, at a terminal, type this:
+
+    git clone https://github.com/danieljabailey/solver_for_among_us.git
+    cd solver_for_among_us
     ./initvenv
+    
+For **windows** users:
+
+ - install python3 from windows store or python website if you don't already have it (python 3 or a later version, current windows store version is 3.8)
+ - either clone the repo with git or just download the zip file (green "code" button at the top of this page, then click "download zip")
+ - if you downloaded the zip, extract the contents of it somewhere on your computer
 
 ## Running
 
+For **linux** users, in the same terminal from before:
+
     ./run
+
+For **windows** users:
+
+ - Double click on "run_windows" or "run_windows.bat"
+ - if you see an error about "python3" or "pip" not being recognised as a program then you haven't installed python correctly.
+ - you should see "Running on http://127.0.0.1:5000/"
+ - now folow the usage instructions below
 
 ## Usage
 
-Navigate to `localhost:5000` in your browser.
+Navigate to `http://localhost:5000` in your browser. (or `http://127.0.0.1:5000`)
 When you are in the Among Us lobby, tick all of the colours of the players, then select the number of impostors in the game, click "Start game"
 
 During the game, provide information as follows:
