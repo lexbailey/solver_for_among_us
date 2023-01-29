@@ -19,7 +19,7 @@ https://youtu.be/G-ojENewj6o
 
 ## Screenshot
 
-![Screenshot of solver GUI](https://github.com/danieljabailey/solver_for_among_us/raw/master/screenshots/screenshot2.png)
+![Screenshot of solver GUI](https://github.com/lexbailey/solver_for_among_us/raw/master/screenshots/screenshot2.png)
 
 ## Platforms
 
